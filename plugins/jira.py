@@ -1,6 +1,16 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+# TODO:
+# - Create an endpoint to get all issues assigned to a user
+# - Create an endpoint to create new issues/story
+# - Add emojis for issues statuses
+# - Add ACL for endpoints
+# - Should `sprint` endpoint show all issues or only opened ?
+# - Assign issue to a user based on mattermost username translated to Jira
+#   user based on his email
+# - Add more info in issue details
+# - Return one multi line message instead of several messages
 
 import re
 import os
