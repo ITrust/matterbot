@@ -4,7 +4,6 @@
 # TODO:
 # - Create an endpoint to get all issues assigned to a user
 # - Create an endpoint to create new issues/story
-# - Add emojis for issues statuses
 # - Add ACL for endpoints
 # - Should `sprint` endpoint show all issues or only opened ?
 # - Assign issue to a user based on mattermost username translated to Jira
@@ -25,6 +24,14 @@ JIRA_CONNECTOR = JIRA(JIRA_URL, basic_auth=(
     os.environ.get("MATTERBOT_JIRA_PASSWORD")
 ))
 
+STATUSES_EMOJI = {
+    "A faire": ":new:",
+    "En cours": ":hammer_and_wrench:",
+    "Needs Review": ":clock1:",
+    "Fini": ":white_check_mark:",
+    "Canceled": ":x:",
+}
+
 
 @respond_to('{} issues'.format(PROJECT), re.IGNORECASE)
 def issues(message):
@@ -39,11 +46,11 @@ def issues(message):
     )
 
     for issue in issues:
-        msg = "[{0}]({1}/browse/{0}) - {2} *{3}*".format(
+        msg = "[{0}]({1}/browse/{0}) - {2} {3}".format(
             issue.key,
             JIRA_URL,
             issue.fields.summary,
-            issue.fields.status
+            STATUSES_EMOJI[issue.fields.status.name],
         )
         message.send(msg)
 
@@ -62,11 +69,11 @@ def active_sprint(message):
     )
 
     for issue in issues:
-        msg = "[{0}]({1}/browse/{0}) - {2} *{3}*".format(
+        msg = "[{0}]({1}/browse/{0}) - {2} {3}".format(
             issue.key,
             JIRA_URL,
             issue.fields.summary,
-            issue.fields.status
+            STATUSES_EMOJI[issue.fields.status.name],
         )
         message.send(msg)
 
@@ -78,7 +85,10 @@ def get_issue(message, key=None):
         issue = JIRA_CONNECTOR.issue(key)
         message.send("[{0}]({1}/browse/{0})".format(issue.key, JIRA_URL))
         message.send(issue.fields.summary)
-        message.send(issue.fields.status.name)
+        message.send("{} - {}".format(
+            STATUSES_EMOJI[issue.fields.status.name],
+            issue.fields.status.name
+        ))
         if issue.fields.assignee:
             message.send(issue.fields.assignee.displayName)
         else:
