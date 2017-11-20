@@ -113,7 +113,55 @@ def assign_issue(message, key=None, username=None):
                 JIRA_CONNECTOR.assign_issue(issue, user)
                 message.send("Issue {} assigned to {}".format(key, user))
             else:
-                message.send("Can not retrieve user from mail {}".format(mail))
+                message.send(
+                    "**Error** : Can not retrieve user from mail {}".format(
+                        mail)
+                )
+
+
+@respond_to("{} begin (\w*)".format(PROJECT), re.IGNORECASE)
+def begin(message, key=None):
+    """Set issue status to `in progress`"""
+    make_transitions(message, key, "Begin")
+
+
+@respond_to("{} code (\w*)".format(PROJECT), re.IGNORECASE)
+def code(message, key=None):
+    """Set issue status to `needs review`"""
+    make_transitions(message, key, "Code")
+
+
+@respond_to("{} review (\w*)".format(PROJECT), re.IGNORECASE)
+def review(message, key=None):
+    """Set issue status to `done`"""
+    make_transitions(message, key, "Review")
+
+
+@respond_to("{} cancel (\w*)".format(PROJECT), re.IGNORECASE)
+def cancel(message, key=None):
+    """Set issue status to `canceled`"""
+    make_transitions(message, key, "Cancel")
+
+
+def make_transitions(message, key=None, transition=None):
+    """Make transitions for jira issues
+    Valid transitions are ("begin", "code", "review", "cancel")
+    """
+    issue = get_jira_issue_from_key(key, message)
+    if issue:
+        transitions = {
+            t["name"]: t["id"] for t in JIRA_CONNECTOR.transitions(issue)
+        }
+        if transition in transitions:
+            JIRA_CONNECTOR.transition_issue(issue, transitions[transition])
+            message.send("{} {} {}".format(
+                message.get_username(), transition, key
+            ))
+        else:
+            message.send(
+                "**ERROR** : '{}' is not a valid transition for {}".format(
+                    transition, key)
+            )
 
 
 def build_array(headers, contents):
@@ -142,5 +190,5 @@ def get_jira_issue_from_key(issue_key, message):
     try:
         return JIRA_CONNECTOR.issue(issue_key)
     except:
-        message.send("Invalid issue key : {}".format(issue_key))
+        message.send("**ERROR** : Invalid issue key : {}".format(issue_key))
         return None
