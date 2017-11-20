@@ -1,16 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-# TODO:
-# - Create an endpoint to get all issues assigned to a user
-# - Create an endpoint to create new issues/story
-# - Add ACL for endpoints
-# - Should `sprint` endpoint show all issues or only opened ?
-# - Assign issue to a user based on mattermost username translated to Jira
-#   user based on his email
-# - Add more info in issue details
-# - Return one multi line message instead of several messages
-
 import re
 import os
 
@@ -41,18 +31,17 @@ def issues(message):
         status != Done and
         status != Canceled and
         (type = Bogue or type = Story)
-        order by priority desc
         """.format(PROJECT)
     )
 
+    lines = []
     for issue in issues:
-        msg = "[{0}]({1}/browse/{0}) - {2} {3}".format(
-            issue.key,
-            JIRA_URL,
+        lines.append([
+            "[{0}]({1}/browse/{0})".format(issue.key, JIRA_URL),
             issue.fields.summary,
             STATUSES_EMOJI[issue.fields.status.name],
-        )
-        message.send(msg)
+        ])
+    message.send(build_array(["IKA", "Summary", "Status"], lines))
 
 
 @respond_to('{} sprint'.format(PROJECT), re.IGNORECASE)
@@ -68,33 +57,32 @@ def active_sprint(message):
         """.format(PROJECT)
     )
 
+    lines = []
     for issue in issues:
-        msg = "[{0}]({1}/browse/{0}) - {2} {3}".format(
-            issue.key,
-            JIRA_URL,
+        lines.append([
+            "[{0}]({1}/browse/{0})".format(issue.key, JIRA_URL),
             issue.fields.summary,
             STATUSES_EMOJI[issue.fields.status.name],
-        )
-        message.send(msg)
+        ])
+    message.send(build_array(["IKA", "Summary", "Status"], lines))
 
 
 @respond_to('{} issue (.*)'.format(PROJECT), re.IGNORECASE)
 def get_issue(message, key=None):
     """Get issue detail from its key"""
-    if key:
-        issue = JIRA_CONNECTOR.issue(key)
-        message.send("[{0}]({1}/browse/{0})".format(issue.key, JIRA_URL))
-        message.send(issue.fields.summary)
-        message.send("{} - {}".format(
-            STATUSES_EMOJI[issue.fields.status.name],
-            issue.fields.status.name
-        ))
-        if issue.fields.assignee:
-            message.send(issue.fields.assignee.displayName)
-        else:
-            message.send('Not assigned')
+    issue = JIRA_CONNECTOR.issue(key)
+    lines = []
+    lines.append("[{0}]({1}/browse/{0})".format(issue.key, JIRA_URL))
+    lines.append(issue.fields.summary)
+    lines.append("{} - {}".format(
+        STATUSES_EMOJI[issue.fields.status.name],
+        issue.fields.status.name
+    ))
+    if issue.fields.assignee:
+        lines.append(issue.fields.assignee.displayName)
     else:
-        message.send('You need to specify a key')
+        line.append("Not assigned")
+    message.send(build_array(["IKA issue"], lines))
 
 
 @respond_to('{} assign (.*)'.format(PROJECT), re.IGNORECASE)
@@ -118,3 +106,21 @@ def assign_issue(message, key=None, user=None):
             JIRA_CONNECTOR.assign_issue(issue, user)
     else:
         message.send('You need to specify a key')
+
+
+def build_array(headers, contents):
+    """Build array in mattermost format from headers and contents"""
+    def build_line(line_content):
+        if not isinstance(line_content, list):
+            line_content = [line_content]
+
+        line_content.insert(0, "")
+        line_content.append("")
+        return " | ".join(line_content)
+
+    lines = [
+        build_line(["**{}**".format(header) for header in headers]),
+        build_line([":-"] * len(headers))
+    ]
+    lines.extend([build_line(content) for content in contents])
+    return "\n".join(lines)
