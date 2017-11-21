@@ -4,7 +4,7 @@ WORKDIR /src
 
 #dependencies
 COPY REQUIREMENTS.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r REQUIREMENTS.txt
 
 #sources
 COPY . .
