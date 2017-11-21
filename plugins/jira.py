@@ -84,7 +84,7 @@ def get_issue(message, key=None):
         message.send(build_array(["IKA issue"], lines))
 
 
-@respond_to("{} assign (\w*)".format(PROJECT), re.IGNORECASE)
+@respond_to("{} assign (\w*$)".format(PROJECT), re.IGNORECASE)
 @respond_to("{} assign (\w*) to (@*\w*)".format(PROJECT), re.IGNORECASE)
 def assign_issue(message, key=None, username=None):
     """Assign issue to user by default me"""
