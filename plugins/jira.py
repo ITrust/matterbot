@@ -4,6 +4,7 @@
 import re
 import os
 
+from plugins import MATTERMOST_MESSAGE_MAX_LENGTH
 from jira import JIRA
 from mattermost_bot.bot import respond_to
 
@@ -46,7 +47,8 @@ def issues(message):
         else:
             line.append("Not assigned")
         lines.append(line)
-    message.send(build_array(["IKA", "Summary", "Status", "Assignee"], lines))
+
+    build_tables(message, ["IKA", "Summary", "Status", "Assignee"], lines)
 
 
 @respond_to("{} sprint".format(PROJECT), re.IGNORECASE)
@@ -72,7 +74,8 @@ def active_sprint(message):
         else:
             line.append("Not assigned")
         lines.append(line)
-    message.send(build_array(["IKA", "Summary", "Status", "Assignee"], lines))
+
+    build_tables(message, ["IKA", "Summary", "Status", "Assignee"], lines)
 
 
 @respond_to("{} issue (\w*)".format(PROJECT), re.IGNORECASE)
@@ -86,8 +89,8 @@ def get_issue(message, key=None):
             issue.fields.summary,
             "{} - {}".format(
                 STATUSES_EMOJI[issue.fields.status.name],
-                issue.fields.status.name
-        )]
+                issue.fields.status.name)
+        ]
         if issue.fields.assignee:
             lines.append("Assigned to : {}".format(
                 issue.fields.assignee.displayName,
@@ -98,7 +101,7 @@ def get_issue(message, key=None):
             issue.fields.creator.displayName,
             issue.fields.created,
             ))
-        message.send(build_array(["IKA issue"], lines))
+        build_tables(message, ["IKA issue"], lines)
 
 
 @respond_to("{} assign (\w*$)".format(PROJECT), re.IGNORECASE)
@@ -181,8 +184,11 @@ def make_transitions(message, key=None, transition=None):
             )
 
 
-def build_array(headers, contents):
-    """Build array in mattermost format from headers and contents"""
+def build_tables(message, headers, contents):
+    """Build table(s) in mattermost format from headers and contents,
+    if the message length is superior to MATTERMOST_MESSAGE_MAX_LENGTH
+    into several messages
+    """
     def build_line(line_content):
         if not isinstance(line_content, list):
             line_content = [line_content]
@@ -191,12 +197,28 @@ def build_array(headers, contents):
         line_content.append("")
         return " | ".join(line_content)
 
-    lines = [
+    header = [
         build_line(["**{}**".format(header) for header in headers]),
-        build_line([":-"] * len(headers))
+        build_line([":-"] * len(headers)),
+        ""
     ]
-    lines.extend([build_line(content) for content in contents])
-    return "\n".join(lines)
+
+    tables = []
+    markdown = "\n".join(header)
+
+    for content in contents:
+        new_line = build_line(content)
+        if len(new_line) + len(markdown) >= MATTERMOST_MESSAGE_MAX_LENGTH:
+            tables.append(markdown)
+            markdown = "\n".join(header)
+
+        markdown += new_line + "\n"
+
+    if markdown:
+        tables.append(markdown)
+
+    for table in tables:
+        message.send(table)
 
 
 def get_jira_issue_from_key(issue_key, message):
@@ -209,8 +231,3 @@ def get_jira_issue_from_key(issue_key, message):
     except:
         message.send("**ERROR** : Invalid issue key : {}".format(issue_key))
         return None
-
-@respond_to("tg", re.IGNORECASE)
-def tg(message):
-    """Print sprint issues"""
-    message.send("Don't be so hard with me :biblethump:")
