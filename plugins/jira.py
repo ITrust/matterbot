@@ -36,12 +36,17 @@ def issues(message):
 
     lines = []
     for issue in issues:
-        lines.append([
+        line = [
             "[{0}]({1}/browse/{0})".format(issue.key, JIRA_URL),
             issue.fields.summary,
             STATUSES_EMOJI[issue.fields.status.name],
-        ])
-    message.send(build_array(["IKA", "Summary", "Status"], lines))
+        ]
+        if issue.fields.assignee:
+            line.append(issue.fields.assignee.displayName)
+        else:
+            line.append("Not assigned")
+        lines.append(line)
+    message.send(build_array(["IKA", "Summary", "Status", "Assignee"], lines))
 
 
 @respond_to("{} sprint".format(PROJECT), re.IGNORECASE)
@@ -57,12 +62,17 @@ def active_sprint(message):
 
     lines = []
     for issue in issues:
-        lines.append([
+        line = [
             "[{0}]({1}/browse/{0})".format(issue.key, JIRA_URL),
             issue.fields.summary,
             STATUSES_EMOJI[issue.fields.status.name],
-        ])
-    message.send(build_array(["IKA", "Summary", "Status"], lines))
+        ]
+        if issue.fields.assignee:
+            line.append(issue.fields.assignee.displayName)
+        else:
+            line.append("Not assigned")
+        lines.append(line)
+    message.send(build_array(["IKA", "Summary", "Status", "Assignee"], lines))
 
 
 @respond_to("{} issue (\w*)".format(PROJECT), re.IGNORECASE)
@@ -70,17 +80,24 @@ def get_issue(message, key=None):
     """Get issue detail from its key"""
     issue = get_jira_issue_from_key(key, message)
     if issue:
-        lines = []
-        lines.append("[{0}]({1}/browse/{0})".format(issue.key, JIRA_URL))
-        lines.append(issue.fields.summary)
-        lines.append("{} - {}".format(
-            STATUSES_EMOJI[issue.fields.status.name],
-            issue.fields.status.name
-        ))
+
+        lines = [
+            "[{0}]({1}/browse/{0})".format(issue.key, JIRA_URL),
+            issue.fields.summary,
+            "{} - {}".format(
+                STATUSES_EMOJI[issue.fields.status.name],
+                issue.fields.status.name
+        )]
         if issue.fields.assignee:
-            lines.append(issue.fields.assignee.displayName)
+            lines.append("Assigned to : {}".format(
+                issue.fields.assignee.displayName,
+            ))
         else:
             lines.append("Not assigned")
+        lines.append("Created by : {} on {}".format(
+            issue.fields.creator.displayName,
+            issue.fields.created,
+            ))
         message.send(build_array(["IKA issue"], lines))
 
 
@@ -192,3 +209,8 @@ def get_jira_issue_from_key(issue_key, message):
     except:
         message.send("**ERROR** : Invalid issue key : {}".format(issue_key))
         return None
+
+@respond_to("tg", re.IGNORECASE)
+def tg(message):
+    """Print sprint issues"""
+    message.send("Don't be so hard with me :biblethump:")
